@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const path = require('path')
 
 const userSchema = new mongoose.Schema(
   {
@@ -9,7 +10,9 @@ const userSchema = new mongoose.Schema(
     mobileNumber: { type: String, unique: true, sparse: true }, // Optional at sign-up, can be added later
     DOB: { type: Date }, // Optional, can be added later
     gender: { type: String, enum: ['Male', 'Female', 'Other'] }, // Optional, can be added later
-    profilePicture: { type: String }, // URL to profile image
+    profilePicture: {
+      type: String,
+      default: '/assets/images/dp1.jpg'}, // URL to profile image
     bio: { type: String, maxlength: 500 }, // New field for user bio
     enrolledCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
     completedCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],

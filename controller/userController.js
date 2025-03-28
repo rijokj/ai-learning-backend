@@ -1,8 +1,9 @@
 const User = require('../model/userSchema')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
+require('dotenv').config()
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key' // Use env variables
+const JWT_SECRET = process.env.JWT_SECRET  // Use env variables
 
 // Register User
 exports.register = async (req, res) => {
@@ -52,21 +53,26 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body
 
-    // Find user
+    // Find user by email
     const user = await User.findOne({ email })
     if (!user) return res.status(400).json({ message: 'Invalid Credentials' })
 
-    // Check Password
+    // Check password
     const isMatch = await bcrypt.compare(password, user.password)
     if (!isMatch)
       return res.status(400).json({ message: 'Invalid Credentials' })
 
-    // Generate JWT
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '1h' })
+    // Generate JWT with role included
+    const token = jwt.sign(
+      { id: user._id }, 
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    )
 
-    res.json({ token, userId: user._id })
+    res.json({ token, userId: user._id, role: user.role }) // ✅ Return role in response
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error })
+    console.error('Login Error:', error.message)
+    res.status(500).json({ message: 'Server Error', error: error.message })
   }
 }
 
@@ -74,12 +80,36 @@ exports.login = async (req, res) => {
 
 exports.getUserProfile = async (req, res) => {
   try {
-    const userId = req.user.id // Get user ID from authenticated request
-    const user = await User.findById(userId).select('-password') // Exclude password
-    if (!user) return res.status(404).json({ message: 'User not found' })
+    const userId = req.params.id || req.user.id // Support both /profile/:id and authenticated user
 
-    res.json(user)
+    const user = await User.findById(userId).select('-password') // Exclude password field
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    res.json(user) // Send user data to the client
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error })
+    console.error('Error fetching user profile:', error.message)
+    res.status(500).json({ message: 'Server error', error: error.message })
+  }
+}
+
+
+
+exports.editProfile = async(req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const updatedUser = await User.findByIdAndUpdate(id, updates, { new: true });
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    console.error('Error updating user:', error.message);
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 }
